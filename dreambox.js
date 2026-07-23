@@ -1,6 +1,6 @@
 // DreamBox — a fully offline generative jam engine. Everything here is
 // synthesized in the browser with the Web Audio API: no network, no keys.
-import { sky } from "./sky.js";
+import { sky } from "./sky.js?v=3"; // must match app.js's import so both share one sky
 
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);

@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "https://esm.run/@google/genai";
 import { DECKS, DARES, SEEDS } from "./decks.js?v=2";
-import { sky } from "./sky.js";
-import { addTrack, allTracks, deleteTrack } from "./tracks.js";
+import { sky } from "./sky.js?v=3";
+import { addTrack, allTracks, deleteTrack } from "./tracks.js?v=3";
 
 const $ = (id) => document.getElementById(id);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -545,7 +545,14 @@ function showSungLyrics(text) {
   lp.classList.remove("hidden");
   lp.innerHTML = `<div class="sugg-hint">📜 WHAT IT SANG</div>`;
   for (const raw of text.split("\n")) {
-    const line = raw.trim().replace(/^\[[\d.:\s]+\]\s*/, ""); // strip timing codes like [0.0:4.0]
+    // scrub Lyria's structural debris: [[A0]]/[[B1]] markers, timing codes
+    // like [0.0:4.0] or [19.2:], and empty [.]/[] brackets — keep [Chorus] etc.
+    const line = raw
+      .replace(/\[\[[^\]]*\]\]/g, "")
+      .replace(/\[[\d.:\s]*\]/g, "")
+      .replace(/\[\W*\]/g, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
     if (!line) continue;
     const el = document.createElement("div");
     if (/^\[.*\]$/.test(line)) {
