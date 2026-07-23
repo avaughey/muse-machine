@@ -773,14 +773,14 @@ input[type="range"]::-moz-range-thumb {
   font-size: 12px;
 }
 .track-row:hover { background: #3d8bff14; }
-.track-row .t-when { color: #6e6394; white-space: nowrap; }
-.track-row .t-style {
+.track-row .t-when { color: #6e6394; white-space: nowrap; font-size: 11px; }
+.track-row .t-title {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
 }
 .track-row .mini-btn { padding: 2px 10px; }
 .track-row .t-del {

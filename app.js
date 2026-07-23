@@ -616,23 +616,30 @@ async function performSing(style, lyrics, statusVerb = "singing") {
         lp.classList.remove("hidden");
         lp.textContent = "What it sang:\n" + sungText;
       }
-      // remember it — history survives reloads, retention policy prunes it
+      // christen it — the title becomes the display name and the filename
+      setStudioStatus("busy", "naming it…");
+      const trackLyrics = sungText || lyrics || "";
+      let title = fallbackTitle(style, trackLyrics);
+      try { title = await nameTrack(style, trackLyrics); } catch {}
+      // remember it — session shelf always shows it; IndexedDB persists it
       currentTrack = {
         id: String(Date.now()),
         ts: Date.now(),
         owner: userScope(),
+        title,
         style,
         model,
         mime,
         data: audio.data,
-        lyrics: sungText || lyrics || "",
+        lyrics: trackLyrics,
       };
+      sessionTracks.unshift(currentTrack);
       await addTrack(currentTrack).catch((e) => {
         // storage refusals (private browsing, full disk) must not be silent
         $("dockStatus").textContent = "⚠ couldn't save to track history: " + (e?.message || e);
       });
       renderHistory();
-      setStudioStatus("live", "♪ done");
+      setStudioStatus("live", `♪ “${title}”`);
       $("songAudio").play().catch(() => {});
     } finally {
       clearInterval(tick);
@@ -697,7 +704,27 @@ $("ideaSing").addEventListener("click", async () => {
 /* ================= track history, retention & saving ================= */
 
 let currentTrack = null;
+const sessionTracks = []; // this sitting's songs — always shown, even if the database misbehaves
 const inApp = location.port === "8123"; // served by the native shell's server
+
+function fallbackTitle(style, lyrics) {
+  const line = (lyrics || "").split("\n").find((l) => l.trim() && !l.trim().startsWith("["));
+  const base = line || style || "untitled dream";
+  return base.split(/\s+/).slice(0, 4).join(" ").replace(/[.,!?;:]+$/, "");
+}
+
+async function nameTrack(style, lyrics) {
+  const resp = await client().models.generateContent({
+    model: "gemini-flash-latest",
+    contents:
+      `Invent a catchy 2-4 word song title for this track.\nStyle: ${style}\nLyrics:\n${(lyrics || "(instrumental)").slice(0, 800)}\n` +
+      `Return ONLY the title — no quotes, no punctuation at the end, no commentary.`,
+    config: { temperature: 1.1 },
+  });
+  const t = resp.text.trim().split("\n")[0].replace(/^["'“”]+|["'“”.]+$/g, "");
+  if (!t || t.length > 60) throw new Error("bad title");
+  return t;
+}
 
 const RETENTION_MS = { "1d": 864e5, "7d": 6048e5, "30d": 2592e6 };
 
@@ -721,9 +748,11 @@ async function applyRetention() {
 function trackFilename(t) {
   const d = new Date(t.ts);
   const pad = (x) => String(x).padStart(2, "0");
-  const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  const stamp = `${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
   const ext = (t.mime || "").includes("wav") ? "wav" : "mp3";
-  return `muse-${stamp}.${ext}`;
+  const slug = (t.title || "muse track")
+    .normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "muse-track";
+  return `${slug}-${stamp}.${ext}`;
 }
 
 async function saveTrack(t) {
@@ -760,8 +789,11 @@ async function saveTrack(t) {
 
 async function renderHistory() {
   const list = $("trackList");
-  const tracks = (await allTracks().catch(() => []))
-    .filter((t) => (t.owner || "guest") === userScope());
+  const persisted = await allTracks().catch(() => []);
+  const known = new Set(persisted.map((t) => t.id));
+  const tracks = [...persisted, ...sessionTracks.filter((t) => !known.has(t.id))]
+    .filter((t) => (t.owner || "guest") === userScope())
+    .sort((a, b) => b.ts - a.ts);
   list.innerHTML = "";
   if (!tracks.length) {
     const standalone = matchMedia("(display-mode: standalone)").matches;
@@ -776,14 +808,14 @@ async function renderHistory() {
     row.className = "track-row";
     const when = new Date(t.ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     row.innerHTML = `
+      <span class="t-title"></span>
       <span class="t-when">${when}</span>
-      <span class="t-style" title=""></span>
       <button class="mini-btn t-play">▶ play</button>
       <button class="mini-btn t-save">⬇ save</button>
       <button class="t-del" title="delete">✕</button>`;
-    const styleEl = row.querySelector(".t-style");
-    styleEl.textContent = t.style || "(untitled vibe)";
-    styleEl.title = t.style || "";
+    const titleEl = row.querySelector(".t-title");
+    titleEl.textContent = t.title || t.style || "(untitled dream)";
+    titleEl.title = t.style || "";
     row.querySelector(".t-play").addEventListener("click", () => {
       currentTrack = t;
       $("songAudio").src = `data:${t.mime};base64,${t.data}`;
