@@ -116,6 +116,9 @@ function applyUserState() {
   ai = null;
   lyricsBox.value = store.get("lyrics") || "";
   retentionSel.value = store.get("retention") || "7d";
+  $("customVoice").value = store.get("customVoice") || "";
+  $("vocalStyle").value = store.get("voiceSel") || "";
+  $("customVoice").classList.toggle("hidden", $("vocalStyle").value !== "custom");
   const chip = $("userChip");
   if (currentUser) {
     chip.classList.remove("hidden");
@@ -552,12 +555,20 @@ const vibeStyleString = () =>
 const vocalChoice = () => {
   const v = $("vocalStyle").value;
   if (v === "instrumental") return "instrumental, no vocals";
+  if (v === "custom") return $("customVoice").value.trim() || cardState["VOICE"];
   return v || cardState["VOICE"];
 };
 
+$("vocalStyle").addEventListener("change", () => {
+  store.set("voiceSel", $("vocalStyle").value);
+  $("customVoice").classList.toggle("hidden", $("vocalStyle").value !== "custom");
+  if ($("vocalStyle").value === "custom") $("customVoice").focus();
+});
+$("customVoice").addEventListener("input", () => store.set("customVoice", $("customVoice").value));
+
 $("rollVoice").addEventListener("click", () => {
   const sel = $("vocalStyle");
-  const real = [...sel.options].filter((o) => o.value !== "" && o.value !== "instrumental");
+  const real = [...sel.options].filter((o) => !["", "instrumental", "custom"].includes(o.value));
   let next = sel.value;
   while (next === sel.value) next = real[Math.floor(Math.random() * real.length)].value;
   sel.value = next;
@@ -663,6 +674,8 @@ $("ideaSing").addEventListener("click", async () => {
         `Idea: "${idea}"\n` +
         `Musical vibe: ${vibeStyleString()}. Sung as: ${vocalChoice()}.\n` +
         `Structure: ${structure}.\n` +
+        `If the voice description implies a duet or multiple languages, split parts between the voices ` +
+        `with labeled tags (e.g. [Verse 1 — Voice A, English] / [Chorus — Voice B, Japanese]) and write each part in its language. ` +
         `Concrete imagery, a hook worth repeating, no clichés, and do not copy any existing song. ` +
         `Return ONLY the lyrics with [Section] tags — no title, no commentary.`,
       config: { temperature: 1.15 },
