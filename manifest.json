@@ -1,0 +1,14 @@
+{
+  "name": "Muse Machine",
+  "short_name": "Muse",
+  "description": "Anti-writer's-block dream studio — jam, write, and sing with AI.",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#a5c8ff",
+  "theme_color": "#a5c8ff",
+  "start_url": ".",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Muse Machine — dream studio</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Muse Machine">
+<meta name="theme-color" content="#a5c8ff">
+</head>
+<body>
+<div class="sky" aria-hidden="true">
+  <span class="sun"></span>
+  <span class="blob b1"></span>
+  <span class="blob b2"></span>
+  <span class="blob b3"></span>
+  <span class="blob b4"></span>
+  <span class="blob b5"></span>
+  <canvas id="skyCanvas"></canvas>
+</div>
+
+<div class="app-window">
+
+  <!-- ======== titlebar ======== -->
+  <div class="mm-titlebar">
+    <span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span>
+    <h1>MUSE&nbsp;MACHINE</h1>
+    <span class="mm-tag">dream studio</span>
+    <div class="keybox">
+      <input id="apiKey" type="password" placeholder="Google AI Studio key" autocomplete="off">
+      <span id="keyStatus" class="key-status">no key yet</span>
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get one ↗</a>
+    </div>
+  </div>
+
+  <!-- ======== toolbar: tabs + the vibe thread ======== -->
+  <div class="mm-toolbar">
+    <nav class="mm-tabs" id="mmTabs">
+      <button data-view="vibe" class="active">⚡ Vibe</button>
+      <button data-view="jam">🎛 Jam</button>
+      <button data-view="dreambox">📦 DreamBox</button>
+      <button data-view="write">📝 Write</button>
+      <button data-view="sing">🎤 Sing</button>
+    </nav>
+    <div class="mm-vibebar">
+      <div id="vibeStrip" class="vibe-strip"></div>
+      <button class="mini-btn" id="rollAll" title="reroll the whole vibe">🎲 reroll</button>
+    </div>
+  </div>
+
+  <!-- ======== views ======== -->
+  <main class="mm-views">
+
+    <!-- VIBE -->
+    <section class="view active" data-view="vibe" id="sparkPanel">
+      <p class="view-hint">Roll your ingredients — they follow you into every tab: the jam prompts, the lyric AI, the song style.</p>
+      <div class="card-grid" id="cardGrid"></div>
+      <div class="constraint-card" id="constraintCard">
+        <div class="cc-label">CREATIVE DARE</div>
+        <div class="cc-text" id="constraintText">…</div>
+        <button class="mini-btn" id="rollConstraint">new dare</button>
+      </div>
+      <div class="seed-card">
+        <div class="cc-label">FIRST-LINE SEED</div>
+        <div class="cc-text" id="seedText">…</div>
+        <button class="mini-btn" id="rollSeed">new seed</button>
+      </div>
+      <div class="ai-sparks">
+        <button id="aiSparkBtn" class="big-btn ghost">✨ AI SPARKS — break my block</button>
+        <div id="aiSparkOut" class="ai-out hidden"></div>
+      </div>
+      <button id="sendToJam" class="big-btn accent">▶ TAKE THIS VIBE TO THE JAM →</button>
+    </section>
+
+    <!-- JAM (Lyria RealTime) -->
+    <section class="view" data-view="jam" id="jamPanel">
+      <div class="view-head">
+        <span class="engine-tag">Lyria RealTime · streamed from the cloud</span>
+        <div id="status" class="status idle">idle</div>
+      </div>
+      <canvas id="viz" width="640" height="110"></canvas>
+      <div class="prompts-head">
+        <span>PROMPT MIXER <small>(weights blend live)</small></span>
+        <button class="mini-btn" id="addPrompt">+ add prompt</button>
+      </div>
+      <div id="promptList"></div>
+      <div class="knobs">
+        <label>BPM <output id="bpmOut">120</output>
+          <input type="range" id="bpm" min="60" max="200" value="120">
+        </label>
+        <label>DENSITY <output id="densityOut">0.65</output>
+          <input type="range" id="density" min="0" max="100" value="65">
+        </label>
+        <label>BRIGHTNESS <output id="brightOut">0.55</output>
+          <input type="range" id="brightness" min="0" max="100" value="55">
+        </label>
+        <label>CHAOS <output id="tempOut">1.1</output>
+          <input type="range" id="temperature" min="0" max="300" value="110">
+        </label>
+        <label class="scale-label">SCALE
+          <select id="scale">
+            <option value="SCALE_UNSPECIFIED">auto</option>
+            <option value="C_MAJOR_A_MINOR">C maj / A min</option>
+            <option value="D_FLAT_MAJOR_B_FLAT_MINOR">D♭ maj / B♭ min</option>
+            <option value="D_MAJOR_B_MINOR">D maj / B min</option>
+            <option value="E_FLAT_MAJOR_C_MINOR">E♭ maj / C min</option>
+            <option value="E_MAJOR_D_FLAT_MINOR">E maj / C♯ min</option>
+            <option value="F_MAJOR_D_MINOR">F maj / D min</option>
+            <option value="G_FLAT_MAJOR_E_FLAT_MINOR">G♭ maj / E♭ min</option>
+            <option value="G_MAJOR_E_MINOR">G maj / E min</option>
+            <option value="A_FLAT_MAJOR_F_MINOR">A♭ maj / F min</option>
+            <option value="A_MAJOR_G_FLAT_MINOR">A maj / F♯ min</option>
+            <option value="B_FLAT_MAJOR_G_MINOR">B♭ maj / G min</option>
+            <option value="B_MAJOR_A_FLAT_MINOR">B maj / G♯ min</option>
+          </select>
+        </label>
+      </div>
+      <div class="transport">
+        <button id="playBtn" class="big-btn accent">▶ PLAY</button>
+        <button id="pauseBtn" class="big-btn" disabled>⏸ PAUSE</button>
+        <button id="stopBtn" class="big-btn" disabled>■ STOP</button>
+      </div>
+      <div id="log" class="log"></div>
+    </section>
+
+    <!-- DREAMBOX -->
+    <section class="view dreambox" data-view="dreambox" id="dreamboxPanel">
+      <div class="db-titlebar">
+        <span class="db-title">DreamBox</span>
+        <span class="db-sub">offline jam engine · zero cloud · zero keys</span>
+        <div id="dbStatus" class="db-status">standby</div>
+      </div>
+      <div class="db-body">
+        <div class="db-controls">
+          <div class="db-label">VIBE</div>
+          <div class="db-vibes" id="dbVibes"></div>
+          <div class="db-label">KEY</div>
+          <select id="dbKey">
+            <option value="0">C</option><option value="1">C♯</option><option value="2">D</option>
+            <option value="3">E♭</option><option value="4">E</option><option value="5">F</option>
+            <option value="6">F♯</option><option value="7">G</option><option value="8">A♭</option>
+            <option value="9" selected>A</option><option value="10">B♭</option><option value="11">B</option>
+          </select>
+          <label class="db-slider">TEMPO <output id="dbBpmOut">84</output>
+            <input type="range" id="dbBpm" min="60" max="150" value="84"></label>
+          <label class="db-slider">SWING <output id="dbSwingOut">0.2</output>
+            <input type="range" id="dbSwing" min="0" max="60" value="20"></label>
+          <label class="db-slider">DENSITY <output id="dbDensityOut">0.6</output>
+            <input type="range" id="dbDensity" min="10" max="100" value="60"></label>
+          <label class="db-slider">DREAMINESS <output id="dbDreamOut">0.7</output>
+            <input type="range" id="dbDream" min="0" max="100" value="70"></label>
+          <label class="db-slider">CHAOS <output id="dbChaosOut">0.3</output>
+            <input type="range" id="dbChaos" min="0" max="100" value="30"></label>
+        </div>
+        <div class="db-stage">
+          <div class="db-grid" id="dbGrid"></div>
+          <div class="db-layers" id="dbLayers"></div>
+          <div class="db-transport">
+            <button class="db-btn play" id="dbPlay">▶ PLAY</button>
+            <button class="db-btn" id="dbDice">🎲 NEW GROOVE</button>
+            <button class="db-btn" id="dbStop" disabled>■ STOP</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WRITE -->
+    <section class="view" data-view="write" id="lyricPanel">
+      <p class="view-hint">Write while you fly. The AI reads your vibe chips and your draft — click any suggestion to add it.</p>
+      <textarea id="lyricsBox" spellcheck="false"
+        placeholder="[Verse 1]&#10;write here — steal the seed line, or ask for next lines when you stall…&#10;&#10;[Chorus]&#10;…"></textarea>
+      <div class="pad-actions">
+        <button class="big-btn" id="insertSeed">+ seed line</button>
+        <button class="big-btn" id="nextLines">✍️ next lines</button>
+        <button class="big-btn" id="rhymeHelp">🎯 rhymes</button>
+      </div>
+      <div id="suggestOut" class="suggest-out hidden"></div>
+      <button id="singThese" class="big-btn accent">🎤 SING THESE LYRICS →</button>
+    </section>
+
+    <!-- SING (Lyria 3) -->
+    <section class="view" data-view="sing" id="studioPanel">
+      <div class="view-head">
+        <span class="engine-tag">Lyria 3 · real sung vocals</span>
+        <div id="studioStatus" class="status idle">idle</div>
+      </div>
+      <div class="idea-card">
+        <div class="cc-label">QUICK SONG — TYPE A SENTENCE OR TWO</div>
+        <textarea id="ideaBox" rows="2"
+          placeholder="e.g. I keep winning arguments in the shower against people who aren't there"></textarea>
+        <button class="big-btn accent" id="ideaSing">✨→🎤 WRITE THE LYRICS &amp; SING IT</button>
+        <p class="idea-note">Gemini turns your idea into full lyrics (they land in the Write tab for editing), then Lyria sings them in your current vibe &amp; tempo.</p>
+      </div>
+      <div class="or-line">— or hand-craft it —</div>
+      <label class="studio-label">STYLE / VIBE
+        <input type="text" id="songStyle"
+          placeholder="e.g. dreamy synthwave ballad, airy female vocal, 95 BPM">
+      </label>
+      <div class="studio-row">
+        <button class="mini-btn" id="styleFromVibe">use current vibe</button>
+        <label class="radio-pill"><input type="radio" name="songLen" value="lyria-3-clip-preview" checked> 30-sec clip</label>
+        <label class="radio-pill"><input type="radio" name="songLen" value="lyria-3-pro-preview"> full song ~2 min</label>
+      </div>
+      <div class="studio-row voice-row">
+        <span class="cc-label">VOICE</span>
+        <select id="vocalStyle">
+          <option value="">🎲 rolled voice (from the Vibe deck)</option>
+          <option>airy female vocal</option>
+          <option>smoky female alto</option>
+          <option>powerhouse soul diva</option>
+          <option>breathy whisper-pop vocal</option>
+          <option>gravelly male baritone</option>
+          <option>smooth R&amp;B tenor</option>
+          <option>aching male falsetto</option>
+          <option>country-twang duet</option>
+          <option>robotic vocoder voice</option>
+          <option>auto-tuned melodic rap</option>
+          <option>fast confident rap flow</option>
+          <option>dreamy layered choir</option>
+          <option>raspy punk shout</option>
+          <option>late-night jazz crooner</option>
+          <option>operatic soprano</option>
+          <option>spoken-word over singing</option>
+          <option value="instrumental">no vocals — instrumental</option>
+        </select>
+        <button class="mini-btn" id="rollVoice">🎲 roll voice</button>
+      </div>
+      <button class="big-btn accent" id="singBtn">🎤 SING IT — lyrics from the Write tab</button>
+      <div id="songOut" class="song-out hidden">
+        <audio id="songAudio" controls></audio>
+        <button id="songDl" class="mini-btn">⬇ save</button>
+      </div>
+      <div id="studioLyrics" class="suggest-out hidden"></div>
+      <div class="history-head">
+        <span class="cc-label">TRACK HISTORY</span>
+        <select id="retention" title="how long finished tracks are kept">
+          <option value="1d">auto-delete after 1 day</option>
+          <option value="7d" selected>auto-delete after 7 days</option>
+          <option value="30d">auto-delete after 30 days</option>
+          <option value="forever">keep forever</option>
+        </select>
+        <span id="folderInfo" class="folder-info hidden">
+          <button class="mini-btn" id="chooseDir">📁 save folder</button>
+          <span id="dirPath" title=""></span>
+        </span>
+      </div>
+      <div id="trackList" class="track-list"><div class="track-empty">no tracks yet — sing something!</div></div>
+    </section>
+
+  </main>
+
+  <!-- ======== dock ======== -->
+  <div class="mm-dock">
+    <span class="dock-dot" id="dockDot"></span>
+    <span id="dockStatus">idle — pick a vibe, then make some noise</span>
+    <button class="mini-btn" id="stopAll">■ stop everything</button>
+  </div>
+
+</div>
+
+<script type="module" src="portal.js"></script>
+<script type="module" src="app.js"></script>
+<script type="module" src="dreambox.js"></script>
+</body>
+</html>
