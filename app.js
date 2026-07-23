@@ -629,11 +629,22 @@ async function saveTrack(t) {
     if (!r.ok || j.error) throw new Error(j.error || "save failed");
     $("dockStatus").textContent = `saved → ${j.path}`;
   } else {
-    // browser: regular download (lands in ~/Downloads)
-    const a = document.createElement("a");
-    a.href = `data:${t.mime};base64,${t.data}`;
-    a.download = trackFilename(t);
-    a.click();
+    const bin = atob(t.data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const file = new File([bytes], trackFilename(t), { type: t.mime || "audio/mpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      // phones: native share sheet — Save to Files, AirDrop, Messages…
+      await navigator.share({ files: [file] }).catch(() => {});
+    } else {
+      // desktop browser: regular download (lands in ~/Downloads)
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = trackFilename(t);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
   }
 }
 
