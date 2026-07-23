@@ -616,7 +616,10 @@ async function performSing(style, lyrics, statusVerb = "singing") {
         data: audio.data,
         lyrics: sungText || lyrics || "",
       };
-      await addTrack(currentTrack).catch(() => {});
+      await addTrack(currentTrack).catch((e) => {
+        // storage refusals (private browsing, full disk) must not be silent
+        $("dockStatus").textContent = "⚠ couldn't save to track history: " + (e?.message || e);
+      });
       renderHistory();
       setStudioStatus("live", "♪ done");
       $("songAudio").play().catch(() => {});
@@ -748,7 +751,11 @@ async function renderHistory() {
     .filter((t) => (t.owner || "guest") === userScope());
   list.innerHTML = "";
   if (!tracks.length) {
-    list.innerHTML = `<div class="track-empty">no tracks yet — sing something!</div>`;
+    const standalone = matchMedia("(display-mode: standalone)").matches;
+    list.innerHTML = `<div class="track-empty">no tracks yet — sing something!` +
+      (standalone
+        ? `<br><small>heads-up: on iPhone, the home-screen app and the Safari tab keep separate histories — songs live where you made them.</small>`
+        : ``) + `</div>`;
     return;
   }
   for (const t of tracks) {
@@ -838,6 +845,7 @@ rollSeed();
 addPromptRow("dreamy synthwave", 1.2);
 addPromptRow("warm analog bass", 0.8);
 refreshVibeStrip();
+navigator.storage?.persist?.().catch(() => {}); // ask iOS/browsers not to evict the track vault
 applyUserState();
 applyRetention().then(renderHistory);
 initFolderUI();
