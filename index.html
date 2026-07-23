@@ -31,6 +31,7 @@
     <span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span>
     <h1>MUSE&nbsp;MACHINE</h1>
     <span class="mm-tag">dream studio</span>
+    <button id="keyToggle" class="mini-btn" title="show / hide API key">🔑</button>
     <div class="keybox">
       <input id="apiKey" type="password" placeholder="Google AI Studio key" autocomplete="off">
       <span id="keyStatus" class="key-status">no key yet</span>
@@ -41,11 +42,11 @@
   <!-- ======== toolbar: tabs + the vibe thread ======== -->
   <div class="mm-toolbar">
     <nav class="mm-tabs" id="mmTabs">
-      <button data-view="vibe" class="active">⚡ Vibe</button>
-      <button data-view="jam">🎛 Jam</button>
-      <button data-view="dreambox">📦 DreamBox</button>
-      <button data-view="write">📝 Write</button>
-      <button data-view="sing">🎤 Sing</button>
+      <button data-view="vibe" class="active"><span class="t-ico">⚡</span><span class="t-lbl">Vibe</span></button>
+      <button data-view="jam"><span class="t-ico">🎛</span><span class="t-lbl">Jam</span></button>
+      <button data-view="dreambox"><span class="t-ico">📦</span><span class="t-lbl">DreamBox</span></button>
+      <button data-view="write"><span class="t-ico">📝</span><span class="t-lbl">Write</span></button>
+      <button data-view="sing"><span class="t-ico">🎤</span><span class="t-lbl">Sing</span></button>
     </nav>
     <div class="mm-vibebar">
       <div id="vibeStrip" class="vibe-strip"></div>

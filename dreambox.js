@@ -57,7 +57,9 @@ function makeImpulse(seconds) {
 
 function ensureAudio() {
   if (ctx) return;
-  ctx = new AudioContext();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) throw new Error("Web Audio is blocked here (iPhone Lockdown Mode?) — allow this site in Safari's Website Settings, then reload.");
+  ctx = new AC();
   master = ctx.createGain();
   master.gain.value = 0.9;
   analyser = ctx.createAnalyser();
@@ -358,7 +360,13 @@ document.addEventListener("engine-start", (e) => { floorOwner = e.detail; });
 
 $("dbPlay").addEventListener("click", async () => {
   emit("engine-start", "dreambox"); // claim the floor before any async setup
-  ensureAudio();
+  try {
+    ensureAudio();
+  } catch (e) {
+    $("dbStatus").textContent = "⚠ " + e.message;
+    emit("engine-stop", "dreambox");
+    return;
+  }
   await ctx.resume();
   if (floorOwner !== "dreambox") return; // another engine grabbed it mid-await
   if (!matrix) rollGroove();

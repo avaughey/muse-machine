@@ -59,7 +59,9 @@ function keySaved(len) {
   const el = $("keyStatus");
   el.className = "key-status" + (len ? " ok" : "");
   el.textContent = len ? "key saved ✓" : "no key yet";
+  document.body.classList.toggle("has-key", !!len); // mobile collapses the key bar
 }
+$("keyToggle").addEventListener("click", () => document.body.classList.toggle("show-key"));
 keyInput.value = localStorage.getItem("muse.key") || "";
 keySaved(keyInput.value.length);
 keyInput.addEventListener("input", () => {
@@ -103,9 +105,21 @@ $("aiSparkBtn").addEventListener("click", async () => {
 
 /* ================= PCM stream player ================= */
 
+// Safari needs the webkit prefix on older versions; iPhone Lockdown Mode
+// removes Web Audio entirely — explain instead of "can't find variable".
+function audioContextClass() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) throw new Error(
+    "This browser blocks Web Audio — on iPhone that's usually Lockdown Mode. " +
+    "In Safari: tap aA (or ⋯) in the address bar → Website Settings → turn OFF " +
+    "Lockdown Mode for this site, then reload. (The Sing tab still works without it.)");
+  return AC;
+}
+
 class PcmPlayer {
   constructor() {
-    this.ctx = new AudioContext({ sampleRate: 48000 });
+    const AC = audioContextClass();
+    this.ctx = new AC({ sampleRate: 48000 });
     this.gain = this.ctx.createGain();
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 256;
