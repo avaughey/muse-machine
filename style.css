@@ -725,6 +725,23 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---------- track history ---------- */
 .view[data-view="sing"].active { display: flex; flex-direction: column; height: 100%; }
+#studioLyrics { min-height: 130px; } /* may flex, but never below a readable sheet */
+
+/* lyric sheet typography */
+.lyr-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #2a7fd4;
+  background: #e8f4ffcc;
+  border: 1px solid #a8d4f2;
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin: 9px 0 4px;
+}
+.lyr-line { font-size: 13.5px; line-height: 1.65; }
 .history-head {
   display: flex;
   align-items: center;
@@ -1002,6 +1019,12 @@ footer {
   .song-out audio { min-width: 150px; }
   #dirPath { max-width: 130px; }
   .mm-dock { padding: 7px 12px calc(7px + env(safe-area-inset-bottom)); }
+  /* phones scroll — don't height-lock the flex views, and never crush the lyrics */
+  .view[data-view="sing"].active, .view[data-view="write"].active { display: block; height: auto; }
+  .view[data-view="write"] #lyricsBox { min-height: 40svh; }
+  .track-list { flex: none; max-height: 200px; }
+  #studioLyrics { max-height: none; }
+  .track-row .t-when { display: none; } /* titles beat dates on small screens */
 }
 
 /* ---------- account chip + pass wizard ---------- */

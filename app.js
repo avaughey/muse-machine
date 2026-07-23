@@ -539,6 +539,26 @@ function findAudio(j) {
   return cands.find((c) => c?.data) || null;
 }
 
+// Renders sung lyrics as a proper lyric sheet: section tags become pills.
+function showSungLyrics(text) {
+  const lp = $("studioLyrics");
+  lp.classList.remove("hidden");
+  lp.innerHTML = `<div class="sugg-hint">📜 WHAT IT SANG</div>`;
+  for (const raw of text.split("\n")) {
+    const line = raw.trim().replace(/^\[[\d.:\s]+\]\s*/, ""); // strip timing codes like [0.0:4.0]
+    if (!line) continue;
+    const el = document.createElement("div");
+    if (/^\[.*\]$/.test(line)) {
+      el.className = "lyr-tag";
+      el.textContent = line.replace(/^\[|\]$/g, "");
+    } else {
+      el.className = "lyr-line";
+      el.textContent = line;
+    }
+    lp.appendChild(el);
+  }
+}
+
 function findText(j) {
   if (j.output_text || j.outputText) return j.output_text || j.outputText;
   for (const o of [].concat(j.output || j.outputs || [], j.steps || []))
@@ -611,11 +631,7 @@ async function performSing(style, lyrics, statusVerb = "singing") {
       $("songAudio").src = url;
       $("songOut").classList.remove("hidden");
       const sungText = findText(j);
-      if (sungText) {
-        const lp = $("studioLyrics");
-        lp.classList.remove("hidden");
-        lp.textContent = "What it sang:\n" + sungText;
-      }
+      if (sungText) showSungLyrics(sungText);
       // christen it — the title becomes the display name and the filename
       setStudioStatus("busy", "naming it…");
       const trackLyrics = sungText || lyrics || "";
@@ -820,11 +836,7 @@ async function renderHistory() {
       currentTrack = t;
       $("songAudio").src = `data:${t.mime};base64,${t.data}`;
       $("songOut").classList.remove("hidden");
-      if (t.lyrics) {
-        const lp = $("studioLyrics");
-        lp.classList.remove("hidden");
-        lp.textContent = "What it sang:\n" + t.lyrics;
-      }
+      if (t.lyrics) showSungLyrics(t.lyrics);
       $("songAudio").play().catch(() => {});
     });
     row.querySelector(".t-save").addEventListener("click", () =>
