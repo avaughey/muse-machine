@@ -31,11 +31,20 @@
     <span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span>
     <h1>MUSE&nbsp;MACHINE</h1>
     <span class="mm-tag">dream studio</span>
-    <button id="keyToggle" class="mini-btn" title="show / hide API key">🔑</button>
+    <button id="keyToggle" class="mini-btn" title="show / hide your Music Pass">🔑</button>
     <div class="keybox">
-      <input id="apiKey" type="password" placeholder="Google AI Studio key" autocomplete="off">
-      <span id="keyStatus" class="key-status">no key yet</span>
-      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get one ↗</a>
+      <input id="apiKey" type="password" placeholder="paste your free Music Pass" autocomplete="off">
+      <span id="keyStatus" class="key-status">no pass yet</span>
+      <button class="mini-btn" id="getPass">get a free pass</button>
+      <button class="mini-btn hidden" id="inviteBtn">🎁 invite</button>
+    </div>
+    <div class="account" id="accountArea">
+      <div id="gsiBtn"></div>
+      <span id="userChip" class="user-chip hidden">
+        <img id="userPic" alt="" referrerpolicy="no-referrer">
+        <span id="userName"></span>
+        <button class="mini-btn" id="signOut">sign out</button>
+      </span>
     </div>
   </div>
 
@@ -255,6 +264,23 @@
 
   </main>
 
+  <!-- ======== music pass wizard ======== -->
+  <div id="passWizard" class="wizard hidden">
+    <div class="wizard-card">
+      <h3>🎟 Get your free Music Pass</h3>
+      <p class="wizard-sub">Takes about 2 minutes. It's free — no credit card.</p>
+      <ol>
+        <li>Tap the blue button below — Google's page will open. Sign in with your Google account if it asks.</li>
+        <li>On that page, press <b>“Create API key.”</b> (That's just tech-speak for your Music Pass.)</li>
+        <li>Tap the little <b>copy</b> icon next to the long code that appears.</li>
+        <li>Come back here and <b>paste it</b> into the box at the top of the page. Done!</li>
+      </ol>
+      <a class="big-btn accent" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Open Google's pass page ↗</a>
+      <p class="wizard-note">Shortcut: if someone in your family already uses Muse Machine, ask them to send you an <b>invite link</b> — then you can skip all of this.</p>
+      <button class="mini-btn" id="wizardClose">close</button>
+    </div>
+  </div>
+
   <!-- ======== dock ======== -->
   <div class="mm-dock">
     <span class="dock-dot" id="dockDot"></span>
@@ -264,6 +290,7 @@
 
 </div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script type="module" src="portal.js"></script>
 <script type="module" src="app.js"></script>
 <script type="module" src="dreambox.js"></script>

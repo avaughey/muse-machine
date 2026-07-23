@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "https://esm.run/@google/genai";
 import { DECKS, DARES, SEEDS } from "./decks.js?v=2";
 import { sky } from "./sky.js";
-import { addTrack, allTracks, deleteTrack, purgeOlderThan } from "./tracks.js";
+import { addTrack, allTracks, deleteTrack } from "./tracks.js";
 
 const $ = (id) => document.getElementById(id);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -55,25 +55,104 @@ $("rollSeed").addEventListener("click", rollSeed);
 
 const keyInput = $("apiKey");
 
+/* ---- per-person workspaces (Sign in with Google keeps them apart) ---- */
+// To enable the Sign in button: create an OAuth Web client ID in Google Cloud
+// console and set it here (or via localStorage "muse.gclientid" for testing).
+const GOOGLE_CLIENT_ID = localStorage.getItem("muse.gclientid") || "";
+
+let currentUser = JSON.parse(localStorage.getItem("muse.session") || "null");
+const userScope = () => (currentUser ? "u:" + currentUser.sub : "guest");
+const store = {
+  get(k) {
+    const v = localStorage.getItem(`muse.${userScope()}.${k}`);
+    if (v !== null) return v;
+    return userScope() === "guest" ? localStorage.getItem("muse." + k) : null; // pre-signin data
+  },
+  set(k, v) { localStorage.setItem(`muse.${userScope()}.${k}`, v); },
+};
+
 function keySaved(len) {
   const el = $("keyStatus");
   el.className = "key-status" + (len ? " ok" : "");
-  el.textContent = len ? "key saved ✓" : "no key yet";
-  document.body.classList.toggle("has-key", !!len); // mobile collapses the key bar
+  el.textContent = len ? "pass saved ✓" : "no pass yet";
+  document.body.classList.toggle("has-key", !!len); // mobile collapses the pass bar
+  $("inviteBtn").classList.toggle("hidden", !len);
 }
 $("keyToggle").addEventListener("click", () => document.body.classList.toggle("show-key"));
-keyInput.value = localStorage.getItem("muse.key") || "";
-keySaved(keyInput.value.length);
 keyInput.addEventListener("input", () => {
-  localStorage.setItem("muse.key", keyInput.value.trim());
-  ai = null; // force re-auth with the new key
+  store.set("key", keyInput.value.trim());
+  ai = null; // force re-auth with the new pass
   keySaved(keyInput.value.trim().length);
 });
 const getKey = () => keyInput.value.trim();
 
+/* ---- Music Pass wizard + family invite links ---- */
+$("getPass").addEventListener("click", () => $("passWizard").classList.remove("hidden"));
+$("wizardClose").addEventListener("click", () => $("passWizard").classList.add("hidden"));
+
+$("inviteBtn").addEventListener("click", async () => {
+  const url = `${location.origin}${location.pathname}#pass=${btoa(getKey())}`;
+  await navigator.clipboard.writeText(url).catch(() => {});
+  $("dockStatus").textContent =
+    "🎁 invite link copied — send it to family you trust; the app sets itself up when they open it";
+});
+
+// an invite link sets the pass automatically — grandma just taps it
+if (location.hash.startsWith("#pass=")) {
+  try {
+    const pass = atob(location.hash.slice(6));
+    if (pass) {
+      store.set("key", pass);
+      history.replaceState(null, "", location.pathname + location.search);
+      setTimeout(() => { $("dockStatus").textContent = "🎉 you're in — your Music Pass is set. Try the Sing tab!"; }, 300);
+    }
+  } catch {}
+}
+
+/* ---- Sign in with Google (identity only — keeps each person's stuff separate) ---- */
+function applyUserState() {
+  keyInput.value = store.get("key") || "";
+  keySaved(keyInput.value.length);
+  ai = null;
+  lyricsBox.value = store.get("lyrics") || "";
+  retentionSel.value = store.get("retention") || "7d";
+  const chip = $("userChip");
+  if (currentUser) {
+    chip.classList.remove("hidden");
+    $("gsiBtn").classList.add("hidden");
+    $("userPic").src = currentUser.picture || "";
+    $("userName").textContent = currentUser.given_name || currentUser.name || "you";
+  } else {
+    chip.classList.add("hidden");
+    $("gsiBtn").classList.remove("hidden");
+  }
+  renderHistory();
+}
+
+function initGoogleSignIn() {
+  if (!GOOGLE_CLIENT_ID || inApp) { $("accountArea").classList.add("hidden"); return; }
+  if (!window.google?.accounts?.id) { setTimeout(initGoogleSignIn, 500); return; }
+  window.google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: (resp) => {
+      const p = JSON.parse(atob(resp.credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      currentUser = { sub: p.sub, name: p.name, given_name: p.given_name, picture: p.picture };
+      localStorage.setItem("muse.session", JSON.stringify(currentUser));
+      applyUserState();
+    },
+  });
+  window.google.accounts.id.renderButton($("gsiBtn"), { type: "standard", size: "medium", shape: "pill" });
+}
+$("signOut").addEventListener("click", () => {
+  currentUser = null;
+  localStorage.removeItem("muse.session");
+  window.google?.accounts?.id?.disableAutoSelect?.();
+  applyUserState();
+});
+
 let ai = null;
 function client() {
-  if (!getKey()) throw new Error("Paste your Google AI Studio key (top right) first.");
+  if (!getKey()) throw new Error("You need a Music Pass first — tap “get a free pass” at the top of the page (or use a family invite link).");
   if (!ai) ai = new GoogleGenAI({ apiKey: getKey(), apiVersion: "v1alpha" });
   return ai;
 }
@@ -365,9 +444,7 @@ $("stopBtn").addEventListener("click", async () => {
 /* ================= Lyric Pad ================= */
 
 const lyricsBox = $("lyricsBox");
-lyricsBox.value = localStorage.getItem("muse.lyrics") || "";
-lyricsBox.addEventListener("input", () =>
-  localStorage.setItem("muse.lyrics", lyricsBox.value));
+lyricsBox.addEventListener("input", () => store.set("lyrics", lyricsBox.value));
 
 function refreshVibeStrip() {
   const strip = $("vibeStrip");
@@ -494,7 +571,7 @@ let singing = false; // one song render at a time — the API isn't a jukebox
 async function performSing(style, lyrics, statusVerb = "singing") {
   if (singing) return;
   try {
-    if (!getKey()) throw new Error("Paste your Google AI Studio key (top right) first.");
+    if (!getKey()) throw new Error("You need a Music Pass first — tap “get a free pass” up top, or use a family invite link.");
     if (!style && !lyrics) throw new Error("Give it a style, some lyrics, or both.");
     singing = true;
     $("singBtn").disabled = true;
@@ -532,6 +609,7 @@ async function performSing(style, lyrics, statusVerb = "singing") {
       currentTrack = {
         id: String(Date.now()),
         ts: Date.now(),
+        owner: userScope(),
         style,
         model,
         mime,
@@ -567,7 +645,7 @@ $("ideaSing").addEventListener("click", async () => {
   if (singing) return;
   const idea = $("ideaBox").value.trim();
   try {
-    if (!getKey()) throw new Error("Paste your Google AI Studio key (top right) first.");
+    if (!getKey()) throw new Error("You need a Music Pass first — tap “get a free pass” up top, or use a family invite link.");
     if (!idea) throw new Error("Type a sentence or two first — that's the whole point!");
     setStudioStatus("busy", "writing lyrics…");
     const model = document.querySelector('input[name="songLen"]:checked').value;
@@ -608,9 +686,8 @@ const inApp = location.port === "8123"; // served by the native shell's server
 const RETENTION_MS = { "1d": 864e5, "7d": 6048e5, "30d": 2592e6 };
 
 const retentionSel = $("retention");
-retentionSel.value = localStorage.getItem("muse.retention") || "7d";
 retentionSel.addEventListener("change", async () => {
-  localStorage.setItem("muse.retention", retentionSel.value);
+  store.set("retention", retentionSel.value);
   await applyRetention();
   renderHistory();
 });
@@ -618,8 +695,11 @@ retentionSel.addEventListener("change", async () => {
 async function applyRetention() {
   const mode = retentionSel.value;
   if (mode === "forever") return;
-  const n = await purgeOlderThan(RETENTION_MS[mode] || RETENTION_MS["7d"]).catch(() => 0);
-  if (n) log(`track history: purged ${n} expired track${n === 1 ? "" : "s"}`);
+  const cutoff = Date.now() - (RETENTION_MS[mode] || RETENTION_MS["7d"]);
+  const mine = (await allTracks().catch(() => []))
+    .filter((t) => (t.owner || "guest") === userScope() && t.ts < cutoff);
+  for (const t of mine) await deleteTrack(t.id);
+  if (mine.length) log(`track history: purged ${mine.length} expired track${mine.length === 1 ? "" : "s"}`);
 }
 
 function trackFilename(t) {
@@ -664,7 +744,8 @@ async function saveTrack(t) {
 
 async function renderHistory() {
   const list = $("trackList");
-  const tracks = await allTracks().catch(() => []);
+  const tracks = (await allTracks().catch(() => []))
+    .filter((t) => (t.owner || "guest") === userScope());
   list.innerHTML = "";
   if (!tracks.length) {
     list.innerHTML = `<div class="track-empty">no tracks yet — sing something!</div>`;
@@ -757,6 +838,8 @@ rollSeed();
 addPromptRow("dreamy synthwave", 1.2);
 addPromptRow("warm analog bass", 0.8);
 refreshVibeStrip();
+applyUserState();
 applyRetention().then(renderHistory);
 initFolderUI();
+initGoogleSignIn();
 log("welcome — roll a vibe on the left, or hit PLAY to jam");
